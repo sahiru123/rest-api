@@ -206,7 +206,6 @@ class ProjectsController extends Rest_api_Controller {
 				'start_date'   => $posted_data['start_date'] ?? null,
 				'deadline'     => $posted_data['deadline'] ?? null,
 				'price'        => unformat_currency($posted_data['price']) ?? 0,
-				'labels'       => trim($posted_data['labels'], ',') ?? null,
 				'created_date' => date('Y-m-d'),
 				'status'       => "open",
 			];

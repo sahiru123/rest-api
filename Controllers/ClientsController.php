@@ -2,16 +2,23 @@
 
 namespace RestApi\Controllers;
 
-class ClientsController extends Rest_api_Controller {
+class ClientsController extends Rest_api_Controller
+{
 	protected $ClientsModel = 'RestApi\Models\ClientsModel';
 
-	public function __construct() {
+	public function __construct()
+	{
 		parent::__construct();
 
-		$this->clients_model         = model('App\Models\Clients_model');
+		$this->clients_model = model('App\Models\Clients_model');
 		$this->restapi_clients_model = model($this->ClientsModel);
-		$this->users_model           = model('App\Models\Users_model');
-		$this->clients_group_model   = model('App\Model\Client_groups_model');
+		$this->users_model = model('App\Models\Users_model');
+		$this->clients_group_model = model('App\Model\Client_groups_model');
+		$this->session = \Config\Services::session();
+		$this->parser = \Config\Services::parser();
+		$this->Email_templates_model = model('App\Models\Email_templates_model');
+		
+		
 	}
 
 
@@ -68,7 +75,8 @@ class ClientsController extends Rest_api_Controller {
 	 * @apiError {Boolean} status Request status
 	 * @apiError {String} message No data were found
 	 */
-	public function index($clientid = '') {
+	public function index($clientid = '')
+	{
 		$list_data = $this->clients_model->get_details()->getResult();
 		if (empty($list_data)) {
 			return $this->failNotFound(app_lang('no_data_were_found'));
@@ -81,7 +89,8 @@ class ClientsController extends Rest_api_Controller {
 	 *
 	 * @return mixed
 	 */
-	public function show($id = null, $searchTerm = "") {
+	public function show($id = null, $searchTerm = "")
+	{
 		if (!is_null($id) && is_numeric($id)) {
 			$list_data = $this->clients_model->get_details(['id' => $id])->getRow();
 			if (empty($list_data)) {
@@ -144,7 +153,8 @@ class ClientsController extends Rest_api_Controller {
 	 * @apiError {Boolean} status Request status
 	 * @apiError {String} message No data were found
 	 */
-	public function search($key = '') {
+	public function search($key = '')
+	{
 		if (!empty($key)) {
 			$list_data = $this->restapi_clients_model->get_search_suggestion($key)->getResult();
 			if (empty($list_data)) {
@@ -212,20 +222,21 @@ class ClientsController extends Rest_api_Controller {
 	 *     }
 	 *
 	 */
-	public function create() {
+	public function create()
+	{
 		$posted_data = $this->request->getPost();
 		if (!empty($posted_data)) {
 			$rules = [
-				'company_name'           => 'required|alpha_space',
-				'phone'                  => 'numeric|if_exist',
-				'website'                => 'valid_url|if_exist',
+				'company_name' => 'required|alpha_space',
+				'phone' => 'numeric|if_exist',
+				'website' => 'valid_url|if_exist',
 				'disable_online_payment' => 'greater_than_equal_to[0]|less_than_equal_to[1]|if_exist',
-				'owner_id'               => 'required|numeric'
+				'owner_id' => 'required|numeric'
 			];
 			$error = [
 				'company_name' => [
-						'required'    => app_lang('company_name_is_required'),
-						'alpha_space' => app_lang('valid_company_name')
+					'required' => app_lang('company_name_is_required'),
+					'alpha_space' => app_lang('valid_company_name')
 				],
 				'phone' => [
 					'numeric' => app_lang('valid_phone')
@@ -235,20 +246,20 @@ class ClientsController extends Rest_api_Controller {
 				],
 				'disable_online_payment' => [
 					'greater_than_equal_to' => app_lang('valid_disable_online_payments'),
-					'less_than_equal_to'    => app_lang('valid_disable_online_payments'),
+					'less_than_equal_to' => app_lang('valid_disable_online_payments'),
 				],
 				'owner_id' => [
 					'required' => app_lang('owner_is_required'),
-					'numeric'  => app_lang('valid_owner_id')
+					'numeric' => app_lang('valid_owner_id')
 				]
 			];
 			if (!$this->validate($rules, $error)) {
 				$response = [
-				  'error' => $this->validator->getErrors(),
-				  ];
+					'error' => $this->validator->getErrors(),
+				];
 				return $this->fail($response);
 			}
-			$is_owner_exists = $this->users_model->get_details(['id' => $posted_data['owner_id'],['status' => "active"]])->getResult();
+			$is_owner_exists = $this->users_model->get_details(['id' => $posted_data['owner_id'], ['status' => "active"]])->getResult();
 			if (empty($is_owner_exists)) {
 				$message = app_lang('owner_id_invalid');
 				return $this->failValidationError($message);
@@ -260,53 +271,53 @@ class ClientsController extends Rest_api_Controller {
 				foreach ($group_ids as $value) {
 					$is_group_id_exits = $this->clients_group_model->get_details(['id' => $value])->getResult();
 					if (empty($is_group_id_exits)) {
-						$message = app_lang('invalid_group_id')." : ".$value;
+						$message = app_lang('invalid_group_id') . " : " . $value;
 						return $this->failValidationError($message);
 					}
 				}
 			}
 			$insert_data = [
-					'company_name'           => $posted_data['company_name'],
-					'address'                => $posted_data['address'] ?? "",
-					'city'                   => $posted_data['city'] ?? "",
-					'created_date'           => date('Y-m-d'),
-					'state'                  => $posted_data['state'] ?? "",
-					'zip'                    => $posted_data['zip'] ?? "",
-					'country'                => $posted_data['country'] ?? "",
-					'phone'                  => $posted_data['phone'] ?? "",
-					'website'                => $posted_data['website'] ?? "",
-					'vat_number'             => $posted_data['vat_number'] ?? "",
-					'disable_online_payment' => $posted_data['disable_online_payment'] ?? 0,
-					'is_lead'                => 0,
-					'owner_id'               => $posted_data['owner_id'],
-					'created_by'             => $posted_data['owner_id'],
-					'group_ids'              => trim($posted_data['group_ids'], ',')
-				];
+				'company_name' => $posted_data['company_name'],
+				'address' => $posted_data['address'] ?? "",
+				'city' => $posted_data['city'] ?? "",
+				'created_date' => date('Y-m-d'),
+				'state' => $posted_data['state'] ?? "",
+				'zip' => $posted_data['zip'] ?? "",
+				'country' => $posted_data['country'] ?? "",
+				'phone' => $posted_data['phone'] ?? "",
+				'website' => $posted_data['website'] ?? "",
+				'vat_number' => $posted_data['vat_number'] ?? "",
+				'disable_online_payment' => $posted_data['disable_online_payment'] ?? 0,
+				'is_lead' => 0,
+				'owner_id' => $posted_data['owner_id'],
+				'created_by' => $posted_data['owner_id'],
+				'group_ids' => trim($posted_data['group_ids'], ',')
+			];
 
 			$data = clean_data($insert_data);
 
 			$save_id = $this->clients_model->ci_save($data);
 			if ($save_id > 0 && !empty($save_id)) {
 				$response = [
-					  'status'   => 200,
-					  'messages' => [
-						  'success' => app_lang('client_added_success')
-					  ]
-					  ];
+					'status' => 200,
+					'messages' => [
+						'success' => app_lang('client_added_success')
+					]
+				];
 				return $this->respondCreated($response);
 			}
 			$response = [
-				  'messages' => [
-					  'success' => app_lang('client_added_fail')
-				  ]
-				  ];
+				'messages' => [
+					'success' => app_lang('client_added_fail')
+				]
+			];
 			return $this->fail($response);
 		}
 		$response = [
-	  'messages' => [
-		  'success' => app_lang('client_added_fail')
-	  ]
-	];
+			'messages' => [
+				'success' => app_lang('client_added_fail')
+			]
+		];
 		return $this->fail($response);
 	}
 
@@ -370,28 +381,29 @@ class ClientsController extends Rest_api_Controller {
 	 *       "message": "Client Update Fail."
 	 *     }
 	 */
-	public function update($id = null) {
-		$posted_data      = $this->request->getJSON();
-		$is_client_exists = $this->restapi_clients_model->get_details(['clients_only' => 1,'id' => $id])->getRowArray();
+	public function update($id = null)
+	{
+		$posted_data = $this->request->getJSON();
+		$is_client_exists = $this->restapi_clients_model->get_details(['clients_only' => 1, 'id' => $id])->getRowArray();
 		if (!is_numeric($id) || empty($is_client_exists)) {
 			$response = [
-			  'messages' => [
-				  'success' => app_lang('client_id_invalid')
-			  ]
-			  ];
+				'messages' => [
+					'success' => app_lang('client_id_invalid')
+				]
+			];
 			return $this->fail($response);
 		}
 		$rules = [
-			'company_name'           => 'required|alpha_space|if_exist',
-			'phone'                  => 'numeric|if_exist',
-			'website'                => 'valid_url|if_exist',
+			'company_name' => 'required|alpha_space|if_exist',
+			'phone' => 'numeric|if_exist',
+			'website' => 'valid_url|if_exist',
 			'disable_online_payment' => 'greater_than_equal_to[0]|less_than_equal_to[1]|if_exist',
-			'owner_id'               => 'required|numeric|if_exist'
+			'owner_id' => 'required|numeric|if_exist'
 		];
 		$error = [
 			'company_name' => [
-					'required'    => app_lang('company_name_is_required'),
-					'alpha_space' => app_lang('valid_company_name')
+				'required' => app_lang('company_name_is_required'),
+				'alpha_space' => app_lang('valid_company_name')
 			],
 			'phone' => [
 				'numeric' => app_lang('valid_phone')
@@ -401,22 +413,22 @@ class ClientsController extends Rest_api_Controller {
 			],
 			'disable_online_payment' => [
 				'greater_than_equal_to' => app_lang('valid_disable_online_payments'),
-				'less_than_equal_to'    => app_lang('valid_disable_online_payments'),
+				'less_than_equal_to' => app_lang('valid_disable_online_payments'),
 			],
 			'owner_id' => [
 				'required' => app_lang('owner_is_required'),
-				'numeric'  => app_lang('valid_owner_id')
+				'numeric' => app_lang('valid_owner_id')
 			]
 		];
 		if (!$this->validate($rules, $error)) {
 			$response = [
-			  'error' => $this->validator->getErrors(),
-			  ];
+				'error' => $this->validator->getErrors(),
+			];
 			return $this->fail($response);
 		}
 
 		if (isset($posted_data->owner_id)) {
-			$is_owner_exists = $this->users_model->get_details(['id' => $posted_data->owner_id,['status' => "active"]])->getResult();
+			$is_owner_exists = $this->users_model->get_details(['id' => $posted_data->owner_id, ['status' => "active"]])->getResult();
 			if (empty($is_owner_exists)) {
 				$message = app_lang('owner_id_invalid');
 				return $this->failValidationError($message);
@@ -428,44 +440,44 @@ class ClientsController extends Rest_api_Controller {
 			foreach ($group_ids as $value) {
 				$is_group_id_exits = $this->clients_group_model->get_details(['id' => $value])->getResult();
 				if (empty($is_group_id_exits)) {
-					$message = app_lang('invalid_group_id')." : ".$value;
+					$message = app_lang('invalid_group_id') . " : " . $value;
 					return $this->failValidationError($message);
 				}
 			}
 		}
 
 		$insert_data = [
-			'company_name'           => $posted_data->company_name ?? $is_client_exists['company_name'],
-			'address'                => $posted_data->address ?? $is_client_exists['address'],
-			'city'                   => $posted_data->city ?? $is_client_exists['city'],
-			'state'                  => $posted_data->state ?? $is_client_exists['state'],
-			'zip'                    => $posted_data->zip ?? $is_client_exists['zip'],
-			'country'                => $posted_data->country ?? $is_client_exists['country'],
-			'phone'                  => $posted_data->phone ?? $is_client_exists['phone'],
-			'website'                => $posted_data->website ?? $is_client_exists['website'],
-			'vat_number'             => $posted_data->vat_number ?? $is_client_exists['vat_number'],
+			'company_name' => $posted_data->company_name ?? $is_client_exists['company_name'],
+			'address' => $posted_data->address ?? $is_client_exists['address'],
+			'city' => $posted_data->city ?? $is_client_exists['city'],
+			'state' => $posted_data->state ?? $is_client_exists['state'],
+			'zip' => $posted_data->zip ?? $is_client_exists['zip'],
+			'country' => $posted_data->country ?? $is_client_exists['country'],
+			'phone' => $posted_data->phone ?? $is_client_exists['phone'],
+			'website' => $posted_data->website ?? $is_client_exists['website'],
+			'vat_number' => $posted_data->vat_number ?? $is_client_exists['vat_number'],
 			'disable_online_payment' => $posted_data->disable_online_payment ?? $is_client_exists['disable_online_payment'],
-			'owner_id'               => $posted_data->owner_id ?? $is_client_exists['owner_id'],
-			'group_ids'              => trim($posted_data->group_ids, ',') ?? $is_client_exists['group_ids'] ?? null,
+			'owner_id' => $posted_data->owner_id ?? $is_client_exists['owner_id'],
+			'group_ids' => trim($posted_data->group_ids, ',') ?? $is_client_exists['group_ids'] ?? null,
 		];
 
 		$data = clean_data($insert_data);
 
 		if ($this->clients_model->ci_save($insert_data, $id)) {
 			$response = [
-			  'status'   => 200,
-			  'messages' => [
-				  'success' => app_lang('client_update_success')
-			  ]
-			  ];
+				'status' => 200,
+				'messages' => [
+					'success' => app_lang('client_update_success')
+				]
+			];
 			return $this->respondCreated($response);
 		}
 
 		$response = [
-		  'messages' => [
-			  'success' => app_lang('client_update_fail')
-		  ]
-		  ];
+			'messages' => [
+				'success' => app_lang('client_update_fail')
+			]
+		];
 		return $this->fail($response);
 	}
 
@@ -499,19 +511,20 @@ class ClientsController extends Rest_api_Controller {
 	 *       "message": "Client Delete Fail."
 	 *     }
 	 */
-	public function delete($id = null) {
+	public function delete($id = null)
+	{
 		if (!is_numeric($id)) {
 			$response = [
-			  'messages' => [
-				  'success' => app_lang('client_id_invalid')
-			  ]
-			  ];
+				'messages' => [
+					'success' => app_lang('client_id_invalid')
+				]
+			];
 			return $this->fail($response);
 		}
-		if ($this->clients_model->get_details(['leads_only' => 0,'id' => $id])->getResult()) {
+		if ($this->clients_model->get_details(['leads_only' => 0, 'id' => $id])->getResult()) {
 			if ($this->clients_model->delete_client_and_sub_items($id)) {
 				$response = [
-					'status'   => 200,
+					'status' => 200,
 					'messages' => [
 						'success' => app_lang('client_delete_success')
 					]
@@ -519,17 +532,200 @@ class ClientsController extends Rest_api_Controller {
 				return $this->respondDeleted($response);
 			}
 			$response = [
-			  'messages' => [
-				  'success' => app_lang('client_delete_fail')
-			  ]
-			  ];
+				'messages' => [
+					'success' => app_lang('client_delete_fail')
+				]
+			];
 			return $this->fail($response);
 		}
 		$response = [
-		  'messages' => [
-			  'success' => app_lang('client_delete_fail')
-		  ]
-		  ];
+			'messages' => [
+				'success' => app_lang('client_delete_fail')
+			]
+		];
 		return $this->fail($response);
+	}
+
+	public function createClient() {
+
+		$posted_data = $this->request->getPost();
+		if (!empty($posted_data)) {
+			$rules = [
+				'email' => 'required|valid_email',
+				'password' => 'required',
+				"first_name" => 'required',
+				"last_name" => 'required',
+			];
+			$error = [
+				'email' => [
+					'required' => app_lang('email_is_required'),
+					'valid_email' => app_lang('valid_email')
+				],
+				'password' => [
+					'required' => app_lang('password_is_required')
+				],
+				'first_name' => [
+					'required' => app_lang('first_name_is_required')
+				],
+				'last_name' => [
+					'required' => app_lang('last_name_is_required')
+				]
+			];
+			if (!$this->validate($rules, $error)) {
+				$response = [
+					'error' => $this->validator->getErrors(),
+				];
+				return $this->fail($response);
+			}
+
+			$email = $posted_data['email'];
+			$password = $posted_data['password'];
+
+        $first_name = $this->request->getPost("first_name");
+        $last_name = $this->request->getPost("last_name");
+
+        $user_data = array(
+            "first_name" => $first_name,
+            "last_name" => $last_name,
+			"phone"=>$this->request->getPost("phone"),
+            "job_title" => $this->request->getPost("job_title") ? $this->request->getPost("job_title") : "Untitled",
+            "created_at" => ''
+        );
+
+        $user_data = clean_data($user_data);
+
+        // don't clean password since there might be special characters 
+        // $user_data["password"] = password_hash($password, PASSWORD_DEFAULT);
+        $user_data["password"] = $password;
+
+
+                if ($this->users_model->is_email_exists($email)) {
+                    echo json_encode(array("success" => false, 'message' => app_lang("account_already_exists_for_your_mail") . " " . anchor(get_uri("signin"), app_lang('signin'), array("class" => "text-white text-off"))));
+                    return false;
+                }
+
+            $company_name = $first_name . " " . $last_name; 
+
+            $client_data = array(
+                "company_name" => $company_name,
+                "type" => "person",
+                "created_by" => 1 //add default admin
+            );
+
+            $client_data = clean_data($client_data);
+
+
+            //create a client
+            $client_id = $this->clients_model->ci_save($client_data);
+            if ($client_id) {
+                //client created, now create the client contact
+                $user_data["user_type"] = "client";
+                $user_data["email"] = $email;
+                $user_data["client_id"] = $client_id;
+                $user_data["is_primary_contact"] = 1;
+                $user_id = $this->users_model->ci_save($user_data);
+
+                log_notification("client_signup", array("client_id" => $client_id), $user_id);
+
+                //send welcome email
+                $email_template = $this->Email_templates_model->get_final_template("new_client_greetings"); //use default template since creating new client
+
+                $parser_data["SIGNATURE"] = $email_template->signature;
+                $parser_data["CONTACT_FIRST_NAME"] = $first_name;
+                $parser_data["CONTACT_LAST_NAME"] = $last_name;
+
+                $Company_model = model('App\Models\Company_model');
+                $company_info = $Company_model->get_one_where(array("is_default" => true));
+                $parser_data["COMPANY_NAME"] = $company_info->name;
+
+                $parser_data["DASHBOARD_URL"] = base_url();
+                $parser_data["CONTACT_LOGIN_EMAIL"] = $email;
+                $parser_data["CONTACT_LOGIN_PASSWORD"] = $this->request->getPost("password");
+                $parser_data["LOGO_URL"] = get_logo_url();
+
+                $message = $this->parser->setData($parser_data)->renderString($email_template->message);
+                $subject = $this->parser->setData($parser_data)->renderString($email_template->subject);
+
+                send_app_mail($email, $subject, $message);
+            } else {
+                echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));
+                return false;
+            }
+
+
+        if ($user_id) {
+            echo json_encode(array("success" => true, 'message' => app_lang('account_created') . " " . anchor(get_uri("signin"), app_lang('signin'), array("class" => "text-white text-off"))));
+        } else {
+            echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));
+        }
+    }
+
+}
+
+     public function authenticate()
+	{
+
+		$posted_data = $this->request->getPost();
+		if (!empty($posted_data)) {
+			$rules = [
+				'email' => 'required|valid_email',
+				'password' => 'required'
+			];
+			$error = [
+				'email' => [
+					'required' => app_lang('email_is_required'),
+					'valid_email' => app_lang('valid_email')
+				],
+				'password' => [
+					'required' => app_lang('password_is_required')
+				]
+			];
+			if (!$this->validate($rules, $error)) {
+				$response = [
+					'error' => $this->validator->getErrors(),
+				];
+				return $this->fail($response);
+			}
+
+			$email = $posted_data['email'];
+			$password = $posted_data['password'];
+
+			if (!$this->users_model->authenticate($email, $password)) {
+				//authentication failed
+				$response = app_lang('Authentication Failed');
+				return $this->fail($response);
+			}
+	
+			//authentication success
+			$sessionId = $this->session->session_id;
+			$response = [
+				'status' => 200,
+				'messages' => [
+					'success' =>'Authentication success',
+					'id'=>$sessionId
+				]
+			];
+	
+			return $this->success($response);
+		}
+
+		$response = [
+			'messages' => [
+				'success' => app_lang('Authentication Failed')
+			]
+		];
+		return $this->fail($response);
+	}
+
+	public function findUserByEmail($email){
+		
+		if (!is_null($email)) {
+			$list_data = $this->users_model->get_details(['email' => $email])->getRow();
+			if (empty($list_data)) {
+				return $this->failNotFound(app_lang('no_data_were_found'));
+			}
+			return $this->respond($list_data, 200);
+		}
+		
 	}
 }
